@@ -17,7 +17,6 @@ def layernorm_forward(x, gamma, beta, eps):
     return out, cache
 
 
-
 def pytorch_layernorm_backward(x, gamma, beta, eps, dy):
     _, K = x.shape
 
@@ -174,19 +173,23 @@ def kevin_layernorm_backward(dy, cache):
     return dx, dgamma, dbeta
 
 
-def moreh_layernorm_backward(dy, cache):
+def aten_cpu_layernorm_backward(dy, cache):
+    # https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/native/cpu/layer_norm_kernel.cpp#L196
     dx, dgamma, dbeta = None, None, None
 
     (x, xmu, xivar, x_mean, xhat, gamma) = cache
+    rstd = 1 / xivar
     M, K = x.shape
 
+    # LayerNormBackward for dx
     ds = np.sum(dy * gamma * x, axis=1, keepdims=True)
     db = np.sum(dy * gamma, axis=1, keepdims=True)
 
-    a = (db * x_mean - ds) * xivar ** (-3) / K
-    c2 = -(a * x_mean + db / xivar / K)
-    dx = dy * gamma / xivar + a * x + c2
+    b = (db * x_mean - ds) * rstd ** (3) / K
+    c = -b * x_mean - db * rstd / K
+    dx = rstd * dy * gamma + b * x + c
 
+    # LayerNormBackward for dgamma and dbeta
     dgamma = np.sum(dy * xhat, axis=0, keepdims=True)
     dbeta = np.sum(dy, axis=0, keepdims=True)
 
@@ -209,7 +212,7 @@ if __name__ == '__main__':
     dx3, dgamma3, dbeta3 = cs231n_layernorm_backward(dy, cache)
     dx4, dgamma4, dbeta4 = kevin_layernorm_backward(dy, cache)
     dx5, dgamma5, dbeta5 = c9_layernorm_backward(dy, cache)
-    dx6 = moreh_layernorm_backward(dy, cache)
+    dx6, dgamma6, dbeta6 = aten_cpu_layernorm_backward(dy, cache)
 
     print('--------pytorch dx--------')
     print(dx)

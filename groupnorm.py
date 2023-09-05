@@ -167,20 +167,24 @@ def kevin_groupnorm_backward(dy, cache):
     return dx, dgamma, dbeta
 
 
-def moreh_groupnorm_backward(dy, cache):
+def aten_cpu_layernorm_backward(dy, cache):
+    # https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/native/cpu/group_norm_kernel.cpp#L655
     dx, dgamma, dbeta = None, None, None
 
     (x, xmu, xivar, x_mean, xhat, gamma) = cache
+    rstd = 1 / xivar
     N, H, W, G, C = x.shape
     reduce_size = H * W * C
 
+    # GroupNormBackward for dx
     ds = np.sum(dy * gamma * x, axis=(1, 2, 4), keepdims=True)
     db = np.sum(dy * gamma, axis=(1, 2, 4), keepdims=True)
 
-    a = (db * x_mean - ds) * xivar ** (-3) / reduce_size
-    c2 = -(a * x_mean + db / xivar / reduce_size)
-    dx = dy * gamma / xivar + a * x + c2
+    b = (db * x_mean - ds) * rstd ** (3) / reduce_size
+    c = -b * x_mean - db * rstd / reduce_size
+    dx = rstd * dy * gamma + b * x + c
 
+    # GroupNormBackward for dgamma and dbeta
     dbeta = np.sum(dy, axis=(0, 1, 2), keepdims=True)
     dgamma = np.sum(xhat * dy, axis=(0, 1, 2), keepdims=True)
 
@@ -207,7 +211,7 @@ if __name__ == '__main__':
     dx2, dgamma2, dbeta2 = cs231n_groupnorm_backward(dy, cache)
     dx3, dgamma3, dbeta3 = rocking_groupnorm_backward(dy, cache)
     dx4, dgamma4, dbeta4 = kevin_groupnorm_backward(dy, cache)
-    dx5, dgamma5, dbeta5 = moreh_groupnorm_backward(dy, cache)
+    dx5, dgamma5, dbeta5 = aten_cpu_layernorm_backward(dy, cache)
 
     print('--------pytorch dx--------')
     print(dx.flatten())
