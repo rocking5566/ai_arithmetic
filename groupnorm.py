@@ -167,7 +167,7 @@ def kevin_groupnorm_backward(dy, cache):
     return dx, dgamma, dbeta
 
 
-def aten_cpu_layernorm_backward(dy, cache):
+def aten_cpu_groupnorm_backward(dy, cache):
     # https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/native/cpu/group_norm_kernel.cpp#L655
     dx, dgamma, dbeta = None, None, None
 
@@ -211,7 +211,7 @@ if __name__ == '__main__':
     dx2, dgamma2, dbeta2 = cs231n_groupnorm_backward(dy, cache)
     dx3, dgamma3, dbeta3 = rocking_groupnorm_backward(dy, cache)
     dx4, dgamma4, dbeta4 = kevin_groupnorm_backward(dy, cache)
-    dx5, dgamma5, dbeta5 = aten_cpu_layernorm_backward(dy, cache)
+    dx5, dgamma5, dbeta5 = aten_cpu_groupnorm_backward(dy, cache)
 
     print('--------pytorch dx--------')
     print(dx.flatten())
