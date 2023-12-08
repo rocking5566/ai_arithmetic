@@ -96,6 +96,7 @@ def layernorm_forward(x, gamma, beta, eps):
 
 def layernorm_backward(dy, x, gamma, x_mean, rstd):
     # dy, x = [M, K], gamma = [1, K], x_mean, rstd = [M, 1]
+    # dx = [M, K], dgamma, dbeta = [1, K]
     M, K = x.shape
     dx = normalization_input_backward(dy, x, gamma, x_mean, rstd, 1, K)
     dgamma, dbeta = normalization_gamma_beta_backward(dy, x, x_mean, rstd, 0)
